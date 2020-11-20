@@ -31,6 +31,6 @@ The app requires python and django.
 
 - Create account/login as admin http://127.0.0.1:8000/admin/
 
-- You can add Kanjis one by one within the Django admin panel.
-- You can use the 'create_instances.py' script to add multiple Kanjis in a single call (Call bulk_create to create records in a single call)
+- You can add your own Kanjis, one by one, within the Django admin panel.
+- You can also use the 'create_instances.py' script to add multiple Kanjis in a single call (Call bulk_create to create records in a single call).
 
