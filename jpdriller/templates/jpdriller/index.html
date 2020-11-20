@@ -1,0 +1,904 @@
+{% load static %}
+<link rel='stylesheet' type='text/css' href='{% static "jpdriller/style.css" %}'/>
+<link href="https://unpkg.com/webkul-micron@1.1.6/dist/css/micron.min.css" type="text/css" rel="stylesheet">
+<script src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
+<script src="https://unpkg.com/webkul-micron@1.1.6/dist/script/micron.min.js" type="text/javascript"></script>
+<audio id="correctsound">
+    <source src='{% static "jpdriller/sounds/Correct_Sound2.wav" %}'/>
+</audio>
+<audio id="wrongsound">
+    <source src='{% static "jpdriller/sounds/Wrong_Sound2.mp3" %}'/>
+</audio>
+<audio id="swooshsound">
+    <source src='{% static "jpdriller/sounds/Swoosh_Sound.wav" %}'/>
+</audio>
+<audio id="startsound">
+    <source src='{% static "jpdriller/sounds/Start_Sound.wav" %}'/>
+</audio>
+
+
+<script type="text/javascript">
+var vocab_id;
+var vocab;
+var Qtype;
+var question;
+var translation;
+var pronunciation;
+var rvl_pronunciation;
+var group;
+var scorecorrect = 0;
+var scorewrong = -1;
+var shake_flag = false;
+var wrongentry_nb = 0;
+const Correct_Sound = document.getElementById("correctsound");
+const Wrong_Sound = document.getElementById("wrongsound");
+const Swoosh_Sound = document.getElementById("swooshsound");
+const Start_Sound = document.getElementById("startsound");
+
+
+function calctime(){   
+    var t = setTimeout("calctime()", 1000);
+    var timer = document.getElementById('time')
+    t= t-50;
+    while (t<0){
+        t=0;
+    }
+    timer.innerHTML="Time : " + t + " s";
+}
+
+function getSelectedOptions(id) {
+    var str = '';
+    for(var i = 0; i < document.querySelectorAll('#'+id+' option:checked').length; i++) {
+        str += document.querySelectorAll('#'+id+' option:checked')[i].value;
+        if(i+1 < document.querySelectorAll('#'+id+' option:checked').length) {
+            str += ',';
+        }
+    }
+     return str;
+}
+
+    
+function get_vocabulary(str) {
+    var xhr = new XMLHttpRequest();
+    var arr;
+    var prnc = document.getElementById('pronunciation');
+    var trns = document.getElementById('translation');
+    var rsp = document.getElementById('response');
+    var nt = document.getElementById('note');
+    var strk = document.getElementById('streak');
+    var sts = document.getElementById('stats');
+    var rvlt = document.getElementById('revealtext');
+    var rvlb = document.getElementById('revealbutton');
+
+    xhr.open('GET','get_vocabulary?groups='+str);
+    xhr.onload = function() {
+        if(xhr.readyState === 4 && xhr.status === 200) {
+
+            arr = xhr.responseText.split(',');
+            Qtype = arr[0];
+            vocab_id = arr[1];
+            vocab = arr[2];
+            note = arr[5];
+            group = arr[6];
+            streak = arr[7];
+
+            // Question : Kanji Japonais -> Lecture Hiragana + Traduction Français
+            if(Qtype == 0) {
+                question  = arr[2]; // Kanji
+                pronunciation = arr[3]; // Hiragana
+                translation = arr[4]; // Traduction Français
+                rsp.style.fontSize = 'x-large';
+                prnc.placeholder = "Pronunciation (Hiragana)";
+                trns.placeholder = "Translation (French)";
+                for (var i = 1; i < 9; i++) {
+                    document.getElementById('option-1'+ i).value = arr[10+3*(i-1)]; // Traduction Français
+                    document.getElementById('option-1'+ i).innerHTML = arr[10+3*(i-1)]; 
+                    if (arr[10+3*(i-1)].length >= 17) {
+                        document.getElementById('option-1'+ i).style.fontSize = 12;
+                    }
+                    else {
+                        document.getElementById('option-1'+ i).style.fontSize = 14;
+                    }
+                    
+                } 
+            } 
+
+            // Question : Traduction Français -> Kanji Japonais
+            else {
+                translation = arr[2]; // Traduction Français
+                rvl_pronunciation = arr[3]; // Hiragana
+                question = arr[4]; // Kanji
+                pronunciation = '';
+                rsp.style.fontSize = 'medium';
+                trns.placeholder = "Japanese Kanji";
+                for (var i = 1; i < 9; i++) {
+                    document.getElementById('option-1'+ i).value = arr[8+3*(i-1)]; // Kanji
+                    document.getElementById('option-1'+ i).innerHTML = arr[8+3*(i-1)];
+                }                 
+            }
+
+            rsp.innerHTML = '<b><h1>'+question+'</h1></b>';
+            if(note == '*' || note == '* ') {nt.innerHTML = '';} 
+            else {nt.innerHTML = '<p>'+note+'</p>';}
+
+            {% if user %}
+                strk.innerHTML = streak;
+                sts.style.visibility = 'visible';
+            {% endif %}
+            
+            rvlt.innerHTML = '';
+            
+            // Question : Kanji Japonais -> Lecture Hiragana + Traduction Français
+            if(pronunciation != '') {prnc.style.visibility = 'visible';}
+            else                     {prnc.style.visibility = 'hidden';}
+
+            // Question : Traduction Français -> Kanji Japonais
+            if(translation != '')    {trns.style.visibility = 'visible';}
+            else                     {trns.style.visibility = 'hidden';}
+
+            // quelque soit la question...
+            if(pronunciation != '' || translation != '') {
+                rvlb.style.visibility = 'visible';
+            }
+            
+            if(pronunciation != '' && translation != '') {prnc.focus();}
+            else if(pronunciation != "") {prnc.focus();}
+            else {trns.focus();}
+        }
+    };
+    xhr.send();
+}
+
+{% if user %}
+    function stat_update(success, vocab_id) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET','stat_update?success='+success+'&vocabid='+vocab_id);
+        xhr.send();
+    }
+{% endif %}
+
+{% if user %}
+    function save_groups(groups) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET','save_groups?groups='+groups);
+        xhr.send();
+    }
+{% endif %}
+
+{% if user %}
+    function setSelectedIndex(s, arr) {
+        var arr_i = 0;
+        for(i = 0; i< s.options.length; i++) {
+            if(s.options[i].value == arr[arr_i]) {
+                s.options[i].selected = true;
+                arr_i += 1;
+                if(arr_i == arr.length) {
+                    break;
+                }
+            }
+        }
+        return;
+    }
+{% endif %}
+
+function resize_margins() {
+    var wrapper = document.getElementById('wrapper');
+    var height = window.innerHeight;
+    if(height <= 470) {
+        wrapper.style.marginTop = Math.round(height * .01) + 'px';
+    } else {
+        wrapper.style.marginTop = Math.round(height * .05) + 'px';
+    }
+    document.getElementById('extras').style.marginTop = parseInt(wrapper.style.marginTop, 10) + parseInt(window.getComputedStyle(wrapper).height) + 10 + 'px';
+    return;
+}
+
+window.onload=function()
+{
+    var rldb = document.getElementById('reloadbutton');
+    var prnc = document.getElementById('pronunciation');
+    var trns = document.getElementById('translation');
+    var rvlt = document.getElementById('revealtext');
+    var rvlb = document.getElementById('revealbutton');
+    var skpb = document.getElementById('skipbutton');
+    var wrnglst = document.getElementById('wronglist');
+    
+    calctime();
+    Start_Sound.play();
+
+    prnc.style.visibility = 'hidden';
+    trns.style.visibility = 'hidden';
+    rvlb.style.visibility = 'hidden';
+    {% if user %}
+        var stat = document.getElementById('stats').style.visibility = 'hidden';
+    {% endif %}
+
+    var revealflag = false;
+
+    resize_margins();
+    window.addEventListener('resize', resize_margins);
+
+    function wronglist() {
+        if (wrongentry_nb <= 23) {
+            var wrngt;
+            if(pronunciation == '' || translation == '') {
+                wrngt = question +' : '+ translation + ' (' + rvl_pronunciation + ')';
+            } 
+            else {
+                wrngt = question + ' (' + pronunciation + ')' +' : '+ translation;
+            }
+            var wrongentry = document.createElement('li');
+            wrongentry.appendChild(document.createTextNode(wrngt));
+            wrnglst.appendChild(wrongentry);
+            wrongentry_nb += 1;
+        }
+        else {
+            wrnglst.innerHTML = "";
+            wrongentry_nb = 0;
+        }
+    }
+
+    function reveal() {
+        if(revealflag == false) {
+            revealflag = true;
+            Swoosh_Sound.play();
+
+            // Question : Traduction Français -> Kanji Japonais
+            if(pronunciation == '' || translation == '') {
+                rvlt.innerHTML = translation +' : '+ rvl_pronunciation;
+            } 
+
+            // Question : Kanji Japonais -> Lecture Hiragana + Traduction Français
+            else {
+                rvlt.innerHTML = pronunciation +' : '+ translation;
+            }
+
+            if(pronunciation != '' && translation != '') {
+                prnc.value = '';
+                trns.value = '';
+                prnc.focus();
+            }
+            else if(pronunciation != '') {
+                prnc.value = '';
+                prnc.focus();
+            }
+            else {
+                trns.value = '';
+                trns.focus();
+            }
+        }
+    }
+
+    function reload() {
+        location.reload();
+    }
+
+    function shake(shake_flag) {
+        var rsp = document.getElementById('response-container');
+        if (shake_flag==true) {
+            rsp.style.animationName = null;
+            rsp.offsetHeight; /* trigger reflow */
+            rsp.style.animationName = "shake";
+            rsp.className = "shake";
+        }
+    }
+
+    function border_animation() {
+        var rsp = document.getElementById('response-container');
+        rsp.style.animationName = null;
+        rsp.offsetHeight;
+        rsp.style.animationName = "shake_up";
+        rsp.className = "shake_up";
+    }
+
+    function skip() {
+        var scr = document.getElementById('score');
+        shake(shake_flag);
+        if (shake_flag==true) {
+            Wrong_Sound.play();
+            wronglist();
+        }
+        prnc.value = '';
+        trns.value = '';
+        rvlt.innerHTML = '';
+        revealflag = false;
+        scorewrong += 1;
+        scr.innerHTML = scorecorrect + "/" + (scorecorrect + scorewrong);
+        if (shake_flag==true) {
+            updateChart(1, scorewrong);
+        }
+        get_vocabulary(getSelectedOptions('groups'));
+        shake_flag = true;
+    }    
+
+    function Iscorrect() {
+        var scr = document.getElementById('score');
+        border_animation();
+        Correct_Sound.play();
+        prnc.value = '';
+        trns.value = '';
+        rvlt.innerHTML = '';
+        revealflag = false;
+        scorecorrect += 1;
+        scr.innerHTML = scorecorrect + "/" + (scorecorrect + scorewrong);
+        updateChart(0, scorecorrect);
+        get_vocabulary(getSelectedOptions('groups'));
+    }  
+
+    {% if user %}
+        {% if settings.selection %}
+            setSelectedIndex(document.getElementById('groups'), '{{settings.selection}}'.split(','));
+            get_vocabulary('GETLAST');
+        {% endif %}
+    {% endif %}
+
+    document.getElementById('groups').onchange = function() {
+        var groups = getSelectedOptions('groups');
+
+        {% if user %}
+            save_groups(groups);
+        {% endif %}
+
+        if(document.getElementById('response').innerHTML == ''  || groups.indexOf(group) == -1) {
+            revealflag = false;
+            if(groups != "") {get_vocabulary(groups);}
+            else {
+                translation = '';
+                pronunciation = '';
+                document.getElementById('response').innerHTML = '';
+                document.getElementById('note').innerHTML = '';
+                rvlt.innerHTML = '';
+                prnc.style.visibility = 'hidden';
+                trns.style.visibility = 'hidden';
+                rvlb.style.visibility = 'hidden';
+                {% if user %}
+                    document.getElementById('stats').style.visibility = 'hidden';
+                {% endif %}
+            }
+        }
+    };
+
+    skip();
+    rldb.addEventListener('click', reload);
+    rvlb.addEventListener('click', reveal);
+
+    window.addEventListener('keyup', function(event) {
+        if(event.keyCode == 191) {
+            if(rvlb.style.visibility == 'visible') {
+                reveal();
+            }
+        }
+    }, false); 
+
+    skpb.addEventListener('click', skip);
+
+    window.addEventListener('keyup', function(event) {
+        if(event.keyCode == 191) {
+            if(skpb.style.visibility == 'visible') {
+                skip();
+            }
+        }
+    }, false);
+    
+    prnc.oninput = function() {
+        if (prnc.value == pronunciation && trns.value == translation) {
+            {% if user %}
+                stat_update(1, vocab_id);
+            {% endif %}
+            prnc.value = '';
+            trns.value = '';
+            rvlt.innerHTML = '';
+            revealflag = false;
+            get_vocabulary(getSelectedOptions('groups'));
+        }
+    };
+    
+    trns.oninput = function() {
+        if (prnc.value == pronunciation && trns.value == translation) {
+            {% if user %}
+                stat_update(1, vocab_id);
+            {% endif %}
+            prnc.value = '';
+            trns.value = '';
+            rvlt.innerHTML = '';
+            revealflag = false;
+            get_vocabulary(getSelectedOptions('groups'));
+        }
+    };
+
+    function check11() {
+        var opt11 = document.getElementById('option-11');
+        if (opt11.value == translation) {Iscorrect();revealflag = false;reveal();revealflag = false}
+        else {skip();}      
+    }
+    document.getElementById('option-11').addEventListener('click', check11);
+
+    function check12() {
+        var opt12 = document.getElementById('option-12');
+        if (opt12.value == translation) {Iscorrect();revealflag = false;reveal();revealflag = false}
+        else {skip();}      
+    }
+    document.getElementById('option-12').addEventListener('click', check12);
+    
+    function check13() {
+        var opt13 = document.getElementById('option-13');
+        if (opt13.value == translation) {Iscorrect();revealflag = false;reveal();revealflag = false}
+        else {skip();}      
+    }
+    document.getElementById('option-13').addEventListener('click', check13);
+
+    function check14() {
+        var opt14 = document.getElementById('option-14');
+        if (opt14.value == translation) {Iscorrect();revealflag = false;reveal();revealflag = false}
+        else {skip();}      
+    }
+    document.getElementById('option-14').addEventListener('click', check14);
+
+    function check15() {
+        var opt15 = document.getElementById('option-15');
+        if (opt15.value == translation) {Iscorrect();revealflag = false;reveal();revealflag = false}
+        else {skip();}      
+    }
+    document.getElementById('option-15').addEventListener('click', check15);
+
+    function check16() {
+        var opt16 = document.getElementById('option-16');
+        if (opt16.value == translation) {Iscorrect();revealflag = false;reveal();revealflag = false}
+        else {skip();}      
+    }
+    document.getElementById('option-16').addEventListener('click', check16);
+    
+    function check17() {
+        var opt17 = document.getElementById('option-17');
+        if (opt17.value == translation) {Iscorrect();revealflag = false;reveal();revealflag = false}
+        else {skip();}      
+    }
+    document.getElementById('option-17').addEventListener('click', check17);
+
+    function check18() {
+        var opt18 = document.getElementById('option-18');
+        if (opt18.value == translation) {Iscorrect();revealflag = false;reveal();revealflag = false}
+        else {skip();}      
+    }
+    document.getElementById('option-18').addEventListener('click', check18);
+
+   
+    {% if not user %}
+        var userflag = false;
+        var passflag = false;
+        document.getElementById('register-submit').disabled = true;
+
+        document.getElementById('logreg').onclick = function() {
+            document.getElementById('modal-background').style.display = 'block';
+            document.getElementById('modal').style.display = 'block';
+            return false;
+        };
+
+        document.getElementById('register-username').oninput = function() {
+            var username = document.getElementById('register-username').value;
+            if(username == '') {
+                userflag = false;
+                document.getElementById('username-check').innerHTML = '';
+            } else if(username.length < 4) {
+                userflag = false;
+                document.getElementById('username-check').style.color = 'red';
+                document.getElementById('username-check').innerHTML = ' Too Short (4 character min).';
+            } else {
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET','check_username?username='+username);
+                xhr.onload = function() {
+                    if(xhr.readyState === 4 && xhr.status === 200) {
+                        if(parseInt(xhr.responseText) == 0) {
+                            userflag = true;
+                            document.getElementById('username-check').style.color = 'green';
+                            document.getElementById('username-check').innerHTML = ' Great!';
+                        } else {
+                            userflag = false;
+                            document.getElementById('username-check').style.color = 'red';
+                            document.getElementById('username-check').innerHTML = ' Already Taken.';
+                        }
+                    }
+                };
+                xhr.send();
+            }
+
+            if(userflag == true && passflag == true) {
+                document.getElementById('register-submit').disabled = false;
+            } else {
+                document.getElementById('register-submit').disabled = true;
+            }
+        };
+
+        document.getElementById('register-password').oninput = function() {
+            if(document.getElementById('register-password').value == '') {
+                passflag = false;
+                document.getElementById('password-check').innerHTML = '';
+            } else {
+                if(document.getElementById('register-password').value.length < 8) {
+                    passflag = false;
+                    document.getElementById('password-check').style.color = 'red';
+                    document.getElementById('password-check').innerHTML = ' Too Short (8 character min).';
+                } else {
+                    passflag = true;
+                    document.getElementById('password-check').style.color = 'green';
+                    document.getElementById('password-check').innerHTML = ' Great!';
+                }
+            }
+
+            if(userflag && passflag) {
+                document.getElementById('register-submit').disabled = false;
+            } else {
+                document.getElementById('register-submit').disabled = true;
+            }
+        };
+    {% endif %}
+
+    document.getElementById("modal-content-close").onclick = function() {
+        document.getElementById('modal-background').style.display = 'none';
+        document.getElementById('modal').style.display = 'none';
+    };
+
+    {% if user %}
+        document.getElementById('button-settings').onclick = function() {
+            document.getElementById('modal-background').style.display = 'block';
+            document.getElementById('modal-settings').style.display = 'block';
+            return false;
+        };
+
+        document.getElementById('modal-settings-close').onclick = function() {
+            document.getElementById('modal-background').style.display = 'none';
+            document.getElementById('modal-settings').style.display = 'none';
+        };
+    {% endif %}
+
+    document.getElementById('extras-about').onclick = function() {
+        document.getElementById('modal-background').style.display = 'block';
+        document.getElementById('modal-about').style.display = 'block';
+        return false;
+    };
+
+    document.getElementById('modal-about-close').onclick = function() {
+        document.getElementById('modal-background').style.display = 'none';
+        document.getElementById('modal-about').style.display = 'none';
+    };
+
+    document.getElementById('extras-tips').onclick = function() {
+        document.getElementById('modal-background').style.display = 'block';
+        document.getElementById('modal-tips').style.display = 'block';
+        return false;
+    };
+
+    document.getElementById('modal-tips-close').onclick = function() {
+        document.getElementById('modal-background').style.display = 'none';
+        document.getElementById('modal-tips').style.display = 'none';
+    };
+
+    var chart = new CanvasJS.Chart("chartContainer", {
+        animationEnabled: true,
+        theme: "dark2",
+        title: {
+            text: "QUIZZ STATS"
+        },  
+        axisY: {
+            title: "NUMBER",
+            titleFontColor: "#FFFFFF",
+            lineColor: "#FFFFFF",
+            labelFontColor: "#FFFFFF",
+            tickColor: "#FFFFFF",
+            interval: 1
+        },
+        axisY2: {
+            title: "Nb WRONG",
+            titleFontColor: "#C0504E",
+            lineColor: "#C0504E",
+            tickColor: "#C0504E"
+        },  
+        toolTip: {
+            shared: true
+        },
+        legend: {
+            cursor:"pointer",
+            itemclick: toggleDataSeries
+        },
+        data: [{
+            type: "column",
+            name: "Correct Answer",
+            legendText: "Correct",
+            showInLegend: true, 
+            dataPoints: [{label: "0", y: scorecorrect }]
+        },
+        {
+            type: "column", 
+            name: "Wrong Answer",
+            legendText: "Wrong",
+            showInLegend: true,
+            dataPoints:[{ label: "0", y: scorewrong }]
+        }]
+    });
+
+    chart.render();
+
+    function updateChart(i, y_value){
+        chart.data[i].dataPoints[0].y=y_value;
+        chart.render(); 
+    };
+
+
+    function toggleDataSeries(e) {
+        if (typeof(e.dataSeries.visible) === "undefined" || e.dataSeries.visible) {
+            e.dataSeries.visible = false;
+        }
+        else {
+            e.dataSeries.visible = true;
+        }
+        chart.render();
+    }
+
+}
+
+window.onclick = function(event) {
+    if(event.target == document.getElementById('modal-background')) {
+        document.getElementById('modal-background').style.display = 'none';
+        document.getElementById('modal').style.display = 'none';
+    }
+};
+
+</script>
+
+<div id="modal-background">
+    <div id="modal" class="modal">
+        <div id="modal-content" class="modal-content">
+
+            <span id="modal-content-close" class="close">&times;</span>
+
+            <div id="modal-login">
+                <h4>Login:</h4>
+                <form action="login" method="post">
+                    {% csrf_token %}
+                    <input id="login-username" name="login-username" type="text" placeholder="Username">
+                    <br>
+                    <input id="login-password" name="login-password" type="password" placeholder="Password">
+                    <br>
+                    <input id="login-submit" type="submit" value="Login">
+                </form>
+            </div>
+
+            <div id="modal-register">
+                <h4>Register:</h4>
+                <form action="register" method="post">
+                    {% csrf_token %}
+                    <span style="font-size: 14px;">I'm not interested in keeping any information. Not even emails.
+                        <br>If you lose your password, you will never get your login back.
+                        <br>Accounts are automatically deleted after 30 days of inactivity.
+                        <br>I highly suggest not using the same passwords from other sites.</span>
+                    <br>
+                    <br>
+                    <input id="register-username" name="register-username" type="text" placeholder="Username">
+                    <span id="username-check"></span>
+                    <br>
+                    <input id="register-password" name="register-password" type="password" placeholder="Password">
+                    <span id="password-check"></span>
+                    <br>
+                    <input id="register-submit" type="submit" value="Register">
+                </form>
+            </div>
+
+        </div>
+    </div>
+
+    {% if user %}
+    <div id="modal-settings" class="modal">
+        <div id="modal-settings-content" class="modal-content">
+            <span id="modal-settings-close" class="close">&times;</span>
+            <form action="save_settings" method="post">
+                {% csrf_token %}
+                <div class="tooltip">Drill Against:
+                    <span class="tooltiptext">Determines chance of drilling Japanese to English or English to Japanese.
+                        <br>Slide all the way left for 100% Japanese to English.
+                        <br>Slide all the way right for 100% English to Japanese.
+                        <br>Or slide half way for 50/50 chance.</span>
+                </div>
+                <br>
+                <span>Japanese</span><input name="weight" type="range" min="0" max="10" value="{{settings.weight}}"><span>English/French</span>
+                <br>
+                <br>
+                <div class="tooltip">Streak Cutoff:
+                    <span class="tooltiptext">Determines at what streak number to stop drilling vocabulary.
+                        <br>Allows less memorized vocabulary to appear more often.
+                        <br>Vocabulary over the cutoff still have a small chance to appear.
+                        <br>If all vocabulary within the selected group are over the cutoff then vocabulary will be chosen at random.
+                        <br>Recommeneded streak cutoff is 10, a streak of 5-10 usually means full memorization.</span>
+                </div>
+                <br>
+                <input name="cutoff" type="number" min="0" max="1000" value="{{settings.cutoff}}">
+                <br>
+                <br>
+                <input class= "button_save" id="settings-save-submit" type="submit" value="Save">
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <div id="modal-about" class="modal">
+        <div id="modal-about-content" class="modal-content">
+            <span id="modal-about-close" class="close">&times;</span>
+            <span>私の名前は<b>Thomas</b>です
+                <br>In my efforts to study 日本語 and learn Django, I decided to create this site and do both at once.
+                <br>
+                <br>It currently contains all Hiragana, Katakana, and nearly 1,000 Japanese vocabulary, mainly Kanji.
+                The idea is to learn through drilling and memorization of pronunications and translations.
+                It works like flash cards except answers are checked on typing and new questions are shown if
+                the given answer is correct without ever having to press a submit button. This allows very quick
+                drilling. Vocabulary is split into groups so you can focus on a select group or select multiple
+                groups to pool questions from those groups. I hope you find it helpful in studying.
+                <br>
+                <br>Feel free to contact me at <i>EMAIL</i> for any questions.
+                <br>You can also view the project on <a>GitHub</a>.</span>
+        </div>
+    </div>
+
+    <div id="modal-tips" class="modal">
+        <div id="modal-tips-content" class="modal-content">
+            <span id="modal-tips-close" class="close">&times;</span>
+            <ul>
+                <li>Some answerss are required to be answered in Hiragana, Katakana or Kanji! You'll need to enable your
+                computer's IME for Japanese. Google if you don't know how to enable or use IME.</li>
+                <li>The '/' key is a shortcut for help, it's a little faster then mousing over and clicking the
+                reveal button.</li>
+                <li>You'll have a hard time drilling any groups unless have at a minimum memorized 95% of hiragana
+                and most of katakana. That should be your first step.</li>
+                <li>Although registering is not neccessary at all, registering allows you to track how well you have
+                memorized a particular vocabulary. Vocabulary you've memorized fully will apear less often allowing
+                vocabulary you are weak on to appear more often. Registering will also save selected groups so its faster
+                to pick up after returning. Lastly, registering will allow you to change and save settings on how
+                vocabulary is chosen and drilled, specifically if you only want to drill against Japanese, English, or a mix.</li>
+                <li>While its rather easy to cheat and get the answers from the browser to preserve a streak, you are
+                only hurting yourself. :)</li>
+            </ul>
+        </div>
+    </div>
+
+</div>
+
+<div id="wrapper">
+
+    <div id="group-container">
+        <b><label id="grouplabel">Groups:</label></b>
+        {% if user %}
+            <a class="button_settings" id="button-settings">Settings</a>
+        {% endif %}
+        <br>
+        <select id="groups" multiple>
+            {% for group in groups %}
+                <option value="{{group.group}}">{{group.group}}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div id="inner-container-right">
+        <div id="userinfo">
+            {% if user %}
+                <span>User: </span><a href="">{{ user.username }}</a>
+                <a id="logout" href="logout">Logout</a>
+            {% else %}
+                <span>User: Guest</span>
+                <a id="logreg" href="">Login/Register</a>
+            {% endif %}
+        </div>
+
+        <div id="button-container">
+            <input class= "button_save" id='reloadbutton' type="submit" value="RESTART">
+        </div>
+
+        <div id="response-container">
+            <span id="response"></span>
+            <span id="note"></span>
+            <span id="revealtext"></span>
+        </div>
+
+        <div id="input-container">
+            <div class="grid-container">
+                <div id='block-11'>
+                    <a class='button_option' name='option' id='option-11'/>  
+                        <label for='option-11' id='option-11'></label>
+                    </a>
+                    <span id='result-11'></span>
+                </div>
+                <div id='block-12'>
+                    <a class='button_option' name='option' id='option-12'/>
+                    <label for='option-12' id='option-12'></label></a>
+                    <span id='result-12'></span>
+                </div>
+                <div id='block-13'>
+                    <a class='button_option' name='option' id='option-13'/>
+                    <label for='option-13' id='option-13'></label></a>
+                    <span id='result-13'></span>
+                </div>
+                <div id='block-14'>
+                    <a class='button_option' name='option' id='option-14'/>
+                    <label for='option-14' id='option-14'></label></a>
+                    <span id='result-14'></span>
+                </div>
+                <div id='block-15'>
+                    <a class='button_option' name='option' id='option-15'/>
+                    <label for='option-15' id='option-15'></label></a>
+                    <span id='result-15'></span>
+                </div>
+                <div id='block-16'>
+                    <a class='button_option' name='option' id='option-16'/>
+                    <label for='option-16' id='option-16'></label></a>
+                    <span id='result-16'></span>
+                </div>      
+                <div id='block-17'>
+                    <a class='button_option' name='option' id='option-17'/>
+                    <label for='option-17' id='option-17'></label></a>
+                    <span id='result-17'></span>
+                </div>   
+                <div id='block-18'>
+                    <a class='button_option' name='option' id='option-18'/>
+                    <label for='option-18' id='option-18'></label></a>
+                    <span id='result-18'></span>
+                    <!--<input type='radio' name='option' id='option8'/>
+                    <label for='option8' id='option-18'></label></a>
+                    <span id='result-18'></span> -->
+                </div> 
+            </div>
+            
+
+            <input type="hidden" id="pronunciation" name="pronunciation" autocomplete="off"/>
+            <!--<br> -->
+            <input type="hidden" id="translation" name="translation" autocomplete="off"/>
+            <!--<br> -->
+            <br> 
+            <a class="button_reveal" id="revealbutton" data-micron="pop" data-micron-duration=".3">REVEAL</a>
+            <br>
+            <br>
+            <a class="button_skip" id="skipbutton" data-micron="flicker">SKIP >></a>
+
+            {% if user %}
+            <br>
+            <div id="scores">
+                <span>Score : </span>
+                <span id="score"></span>
+            </div>
+            <div id="stats">
+                <span>Streak : </span>
+                <span id="streak"></span>
+            </div>
+            {% endif %}
+
+        </div>
+        
+    </div>
+
+</div>
+
+<div id="graph">
+    <div id="graph-container">
+            <b><label id="graphlabel">Graphs:</label></b>
+            <br>
+            <div id="chartContainer"></div>
+    </div>
+    <div id="wrong-container-right">
+        <div id="wronglabel">
+            <b><label id="graphlabel">Wrong:</label></b>
+            <br>
+        </div>
+        <div id="wronglist-container">
+            <ol id="wronglist"></ol>
+        </div>
+    </div>
+</div>
+
+
+<div id="extras">
+    <div id="time" class="extras_timer"></div>
+    <div class="extras_img">
+        <img src='{% static "jpdriller/images/Pokemon_Gif.gif" %}'/>
+    </div>
+    <audio controls loop id="player" class="extras_player">
+        <source src='{% static "jpdriller/sounds/Pokemon_Sound.mp3" %}'/>
+    </audio>
+    <a id="extras-about" href="" class="extras_about">About</a>
+    <a id="extras-tips" href="" class="extras_tips">Tips</a>
+</div>

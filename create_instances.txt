@@ -1,0 +1,23 @@
+go to "C:\Project\jpdriller-master\jpdriller-master\website"
+launch "2_pipenv_shell"
+write "python manage.py shell" (access Django Shell)
+
+write everything that is in the create_instance.py file
+
+write 
+from jpdriller.models import * 
+ + ENTER
+
+write : 
+vocab_989 = Vocabulary(id='989',group='JLPT N2',vocabulary='深い2',pronunciation='ふかい2',translation='profond2',note='*')
+vocab_990 = Vocabulary(id='990',group='JLPT N2',vocabulary='深い3',pronunciation='ふかい3',translation='profond3',note='*')
+ + ENTER
+
+write 
+# Create Vocabulary list
+vocab_list = [vocab_989,vocab_990]
+ + ENTER
+
+# Call bulk_create to create records in a single call
+Vocabulary.objects.bulk_create(vocab_list)
+ + ENTER
