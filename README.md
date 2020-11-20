@@ -32,5 +32,9 @@ The app requires python and django.
 - Create account/login as admin http://127.0.0.1:8000/admin/
 
 - You can add your own Kanjis, one by one, within the Django admin panel.
+
+<a href='https://www.casimages.com/i/201120032615877485.png.html' target='_blank' title='Mon image'><img src='https://nsa40.casimages.com/img/2020/11/20/201120032615877485.png' border='0' alt='Mon image' /></a>
+
 - You can also use the 'create_instances.py' script to add multiple Kanjis in a single call (Call bulk_create to create records in a single call).
 
+<a href='https://www.casimages.com/i/201120032213476955.png.html' target='_blank' title='Mon image'><img src='https://nsa40.casimages.com/img/2020/11/20/201120032213476955.png' border='0' alt='Mon image' /></a>
