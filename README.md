@@ -10,8 +10,8 @@ The app requires python and django.
 # Features:
 
 - From christhemart's app:
-	Contains all hiragana and katakana as well as nearly 1,000 Japanese vocabulary, mainly kanji.
-	Read wiki for main features.
+	- Contains all hiragana and katakana as well as nearly 1,000 Japanese vocabulary, mainly kanji.
+	- Read wiki for main features.
 
 - NEW: JLPT N2 Kanjis database (advance Japanese)  /!\ French-Japanese /!\
 
@@ -25,9 +25,9 @@ The app requires python and django.
 # HOW TO RUN THE APP:
 
 - Connect to jpdriller locally http://127.0.0.1:8000/jpdriller/:
-	run batch file 1 (opens a browser to localhost), 2 (connect to virtualenv)
-	run batch file 2 (activate virtualenv)
-	run batch file 3 (python manage.py runserver)
+	- run batch file 1 (opens a browser to localhost), 2 (connect to virtualenv)
+	- run batch file 2 (activate virtualenv)
+	- run batch file 3 (python manage.py runserver)
 
 - Create account/login as admin http://127.0.0.1:8000/admin/
 
