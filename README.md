@@ -2,7 +2,7 @@
 
 I made this Django app for drilling and memorizing JLPT N2 Kanjis, based on christhemart's app (https://github.com/christhemart/jpdriller).
 
-<a href='https://www.casimages.com/i/201120031440647062.png.html' target='_blank' title='Mon image'><img src='https://nsa40.casimages.com/img/2020/11/20/201120031440647062.png' border='0' alt='Mon image' /></a>
+<a href='https://www.casimages.com/i/201123074551498499.png.html' target='_blank' title='Mon image'><img src='https://nsa40.casimages.com/img/2020/11/23/201123074551498499.png' border='0' alt='Mon image' /></a>
 
 The app requires python and django.
 
