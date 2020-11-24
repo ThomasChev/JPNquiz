@@ -19,13 +19,13 @@ The app requires python and django.
 
 - Quiz Statistics
 
-- Planning on improving the app, and updating the N2 database
+- Planning on improving the app, and updating the N2 Database
 
 
 # How to run the app:
 
 - Connect to jpdriller locally http://127.0.0.1:8000/jpdriller/:
-	- run batch file 1 (opens a browser to localhost), 2 (connect to virtualenv)
+	- run batch file 1 (opens a browser to localhost)
 	- run batch file 2 (activate virtualenv)
 	- run batch file 3 (python manage.py runserver)
 
